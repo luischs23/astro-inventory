@@ -1,5 +1,5 @@
 import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile, type User } from "firebase/auth"
-import { auth, db } from "./firebase.config"
+import { auth, db } from "../../lib/firebase/client"
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
 
 interface UserData {
