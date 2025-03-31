@@ -1,61 +1,60 @@
-"use client";
+// src/components/withPermission.tsx
+import { useEffect, useState } from 'react';
 
-import type React from "react";
-import { useAuth } from "../context/AuthContext";
-import { useEffect, useState } from "react";
-
-type WithPermissionProps = {
+interface WithPermissionProps {
   hasPermission: (action: string) => boolean;
-};
+}
 
 export function withPermission<P extends object>(
   WrappedComponent: React.ComponentType<P & WithPermissionProps>,
-  requiredPermissions: string[], 
+  requiredPermissions: string[],
 ) {
   return function PermissionWrapper(props: P) {
-    const { user, loading } = useAuth();
     const [hasPermission, setHasPermission] = useState<(action: string) => boolean>(() => () => false);
     const [isAuthorized, setIsAuthorized] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-      if (!loading && user) {
-        fetch('/api/permissions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            token: user.token,
-            permissions: requiredPermissions,
-          }),
-        })
-          .then(res => {
-            if (!res.ok) {
-              throw new Error(`Error ${res.status}: ${res.statusText}`);
-            }
-            return res.json();
-          })
-          .then(data => {
-            if (data.authorized) {
-              // Usar los permisos reales del usuario devueltos por el backend
-              const userPermissions = data.permissions || [];
-              setHasPermission(() => (action: string) => userPermissions.includes(action));
-              setIsAuthorized(true);
-            } else {
-              window.location.href = "/unauthorized";
-            }
-          }) 
-          .catch(error => {
-            console.error('Error verificando permisos:', error);
-             window.location.href ="/unauthorized";
-          });
-      } else if (!loading && !user) {
-         window.location.href ="/login";
-      }
-    }, [user, loading]);
+      const token = localStorage.getItem('userToken');
+      const storedPermissions = JSON.parse(localStorage.getItem('userPermissions') || '[]');
 
-    if (!isAuthorized) {
-      return null;
+      if (!token) {
+        window.location.href = '/signin';
+        return;
+      }
+
+      fetch('/api/permissions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token,
+          permissions: requiredPermissions,
+        }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error('Error al verificar permisos');
+          return res.json();
+        })
+        .then((data) => {
+          if (data.authorized) {
+            const userPermissions = data.permissions || [];
+            setHasPermission(() => (action: string) => userPermissions.includes(action));
+            setIsAuthorized(true);
+          } else {
+            window.location.href = '/unauthorized';
+          }
+        })
+        .catch((error) => {
+          console.error('Error verificando permisos:', error);
+          window.location.href = '/unauthorized';
+        })
+        .finally(() => setLoading(false));
+    }, []);
+
+    if (loading || !isAuthorized) {
+      return <div>Cargando...</div>;
     }
 
     return <WrappedComponent {...props} hasPermission={hasPermission} />;

@@ -12,8 +12,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ArrowLeft, MoreVertical, X, Pencil, Trash2 } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,} from "./ui/AlertDialog"
 import { getApp, getApps, initializeApp } from "firebase/app";
+import { withPermission } from './WithPermission';
 
-interface Company {
+interface Company {   
   id: string
   name: string
   email: string
@@ -32,10 +33,11 @@ interface FirebaseConfig {
 }
 
 interface CompanyManagementProps {
-  firebaseConfig: FirebaseConfig;
+  firebaseConfig: any; // Tipar según tu configuración
+  hasPermission: (action: string) => boolean;
 }
 
-function CompanyManagement({ firebaseConfig }: CompanyManagementProps) {
+function CompanyManagement({ firebaseConfig, hasPermission}: CompanyManagementProps) {
   if (!getApps().length) {
     initializeApp(firebaseConfig);
   }
@@ -200,6 +202,7 @@ function CompanyManagement({ firebaseConfig }: CompanyManagementProps) {
                     <Pencil className="h-4 w-4" />
                   </Button>
                   <Button 
+                    disabled={!hasPermission('create')}
                     variant="ghost" 
                     className="h-8 w-8 p-0 mr-1" 
                     onClick={() => {
@@ -335,4 +338,4 @@ function CompanyManagement({ firebaseConfig }: CompanyManagementProps) {
   )
 }
 
-export default CompanyManagement;
+export default withPermission(CompanyManagement, ['read']);

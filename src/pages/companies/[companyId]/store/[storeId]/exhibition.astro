@@ -1,13 +1,11 @@
 ---
-//src\pages\companies\[companyId]\home.astro
-import Layout from '../../../layouts/Layout.astro';
-import  HomeComponent  from '../../../components/HomeComponent.tsx';
-const { companyId } = Astro.params; // Obtener el parámetro dinámico de Astro
+import Layout from '../../../../../layouts/Layout.astro';
+import  InventoryExbPage  from '../../../../../components/Exhibition.tsx'
+const { companyId, storeId } = Astro.params; // Obtener el parámetro dinámico de Astro
 export const prerender = false; // Desactiva el prerenderizado estático
 ---
-
 <Layout>
-  <HomeComponent
+  <InventoryExbPage
     firebaseConfig={{
       apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
       authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -17,6 +15,7 @@ export const prerender = false; // Desactiva el prerenderizado estático
       appId: import.meta.env.VITE_FIREBASE_APP_ID,
     }} 
     companyId={companyId} 
+    storeId={storeId} 
     client:only="react" 
   />
 </Layout>

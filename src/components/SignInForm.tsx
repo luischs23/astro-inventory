@@ -1,10 +1,10 @@
 // src/components/SignInForm.tsx
 import { useState } from 'react';
-import { initializeApp} from 'firebase/app';
+import { initializeApp } from 'firebase/app';
 import type { FirebaseApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword} from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import type { FormEvent } from 'react';
-import type { Auth, User as FirebaseUser } from "firebase/auth";
+import type { Auth, User as FirebaseUser } from 'firebase/auth';
 
 interface FirebaseConfig {
   apiKey: string;
@@ -15,10 +15,9 @@ interface FirebaseConfig {
   appId: string;
 }
 
-// Extendemos el tipo FirebaseUser para incluir el token y otros datos opcionales
 interface ExtendedUser extends FirebaseUser {
-  token?: string;
-  isDeveloper?: boolean; // Ejemplo de dato que podrías usar para permisos
+  token: string;
+  permissions?: string[];
 }
 
 interface SignInFormProps {
@@ -30,53 +29,74 @@ export default function SignInForm({ firebaseConfig }: SignInFormProps) {
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isEmailVerified, setIsEmailVerified] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  // Inicializar Firebase
   const app: FirebaseApp = initializeApp(firebaseConfig);
   const auth: Auth = getAuth(app);
 
   const handleSignIn = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null); // Limpiar errores previos
+    setError(null);
+    setLoading(true);
 
     try {
-      // Autenticar al usuario
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser: FirebaseUser = userCredential.user;
 
-      // Verificar si el email está verificado
       const emailVerified = firebaseUser.emailVerified;
       setIsEmailVerified(emailVerified);
 
       if (!emailVerified) {
         setError('Por favor, verifica tu correo electrónico antes de continuar.');
+        setLoading(false);
         return;
       }
 
-      // Obtener el token de autenticación
       const token = await firebaseUser.getIdToken();
       console.log('✅ Token obtenido:', token);
 
-      // Crear un ExtendedUser con el token
+      const response = await fetch('/api/permissions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token,
+          permissions: ['read'],
+        }),
+      });
+
+      const responseBody = await response.text();
+      console.log('📥 Respuesta de /api/permissions:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: responseBody,
+      });
+
+      if (!response.ok) {
+        const errorData = JSON.parse(responseBody);
+        throw new Error(errorData.error || 'Error al verificar permisos');
+      }
+
+      const { authorized, permissions } = JSON.parse(responseBody);
+
+      if (!authorized) {
+        setError('No tienes permiso para acceder a esta aplicación.');
+        setLoading(false);
+        return;
+      }
+
       const extendedUser: ExtendedUser = {
         ...firebaseUser,
         token,
-        // Aquí podrías añadir más datos como isDeveloper si los obtienes de otra fuente (Firestore, por ejemplo)
+        permissions,
       };
 
-      // Opcional: Llamar a una API con el token para obtener más datos del usuario
-      // Ejemplo comentado:
-      /*
-      const response = await fetch('https://tu-api.com/user', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const userData = await response.json();
-      extendedUser.isDeveloper = userData.isDeveloper;
-      */
+      console.log('✅ Usuario con permisos:', extendedUser);
 
-      console.log('✅ Usuario autenticado:', extendedUser);
+      localStorage.setItem('userToken', token);
+      localStorage.setItem('userPermissions', JSON.stringify(permissions));
 
-      // Redirigir a /companies tras éxito
       window.location.href = '/companies';
     } catch (err) {
       if (err instanceof Error) {
@@ -84,34 +104,88 @@ export default function SignInForm({ firebaseConfig }: SignInFormProps) {
       } else {
         setError('Ocurrió un error desconocido');
       }
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <form onSubmit={handleSignIn}>
-        <div>
-          <label>Email:</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label>Contraseña:</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        <button type="submit">Iniciar Sesión</button>
-      </form>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {isEmailVerified && <p style={{ color: 'green' }}>Email verificado</p>}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
+      <div className="w-full max-w-[400px] shadow-lg bg-white rounded-lg p-6">
+        <form onSubmit={handleSignIn} className="space-y-6 w-full py-6">
+          <div className="space-y-4">
+            <div className="text-2xl font-bold text-center">Welcome Back</div>
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={loading}
+                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {error && <div className="text-sm text-red-500 text-center">{error}</div>}
+          {isEmailVerified && !error && (
+            <div className="text-sm text-green-500 text-center">Email verificado</div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50"
+            disabled={loading}
+          >
+            {loading ? (
+              <div className="flex items-center justify-center">
+                <svg
+                  className="animate-spin h-5 w-5 mr-2 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                  ></path>
+                </svg>
+                <span>Logging in...</span>
+              </div>
+            ) : (
+              'Log In'
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

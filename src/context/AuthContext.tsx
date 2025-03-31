@@ -1,27 +1,24 @@
-"use client"
+// src/context/AuthContext.tsx
+import { createContext, useContext, useEffect, useState } from 'react';
+import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
+import { auth } from '../lib/firebase/client'; // Asegúrate de tener esta configuración
 
-import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
-import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth"
-import { auth } from "../lib/firebase/client";
-import { getUserData } from "../services/firebase/auth-service"
-
-// Extend FirebaseUser without overriding its properties
+// Extender FirebaseUser con datos adicionales
 type ExtendedUser = FirebaseUser & {
-  id?: string
-  role?: string
-  companyId?: string | null
-  name?: string
-  isDeveloper?: boolean
-  token?: string
-  status?: "active" | "deleted"
-}
+  id?: string;
+  role?: string;
+  companyId?: string | null;
+  name?: string;
+  isDeveloper?: boolean;
+  token?: string;
+  status?: 'active' | 'deleted';
+};
 
 interface AuthContextType {
-  user: ExtendedUser | null
-  loading: boolean
-  setUser: (user: ExtendedUser | null) => void
-  isEmailVerified: boolean
+  user: ExtendedUser | null;
+  loading: boolean;
+  setUser: (user: ExtendedUser | null) => void;
+  isEmailVerified: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -29,66 +26,69 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   setUser: () => {},
   isEmailVerified: false,
-})
+});
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<ExtendedUser | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isEmailVerified, setIsEmailVerified] = useState(false)
+  const [user, setUser] = useState<ExtendedUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("🔄 onAuthStateChanged detectó un cambio:", firebaseUser)
+      console.log('🔄 onAuthStateChanged detectó un cambio:', firebaseUser);
 
       if (!firebaseUser) {
-        console.log("❌ No hay usuario autenticado.")
-        setUser(null)
-        setIsEmailVerified(false)
-        setLoading(false)
-        return
+        console.log('❌ No hay usuario autenticado.');
+        setUser(null);
+        setIsEmailVerified(false);
+        setLoading(false);
+        return;
       }
 
       try {
-        // Get token regardless of email verification status
-        const token = await firebaseUser.getIdToken()
-        console.log("✅ Token obtenido:", token)
+        const token = await firebaseUser.getIdToken();
+        console.log('✅ Token obtenido:', token);
 
-        // Get user data from Firestore or minimal data from Firebase Auth
-        const userData = await getUserData(firebaseUser)
+        // Aquí podrías obtener datos adicionales desde Firestore si los necesitas
+        const response = await fetch('/api/user-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: firebaseUser.uid }),
+        });
+
+        const userData = await response.json();
 
         const newUser: ExtendedUser = {
           ...firebaseUser,
           token,
-          id: userData?.id,
+          id: userData?.id || firebaseUser.uid,
           role: userData?.role,
           companyId: userData?.companyId,
           name: userData?.name,
-          isDeveloper: userData?.isDeveloper,
-          status: userData?.status,
-        }
+          isDeveloper: userData?.role === 'developer',
+          status: userData?.status || 'active',
+        };
 
-        console.log("✅ Usuario final en AuthContext:", newUser)
-        setUser(newUser)
-        // Ensure we always set a boolean value
-        setIsEmailVerified(newUser.emailVerified ?? false)
+        console.log('✅ Usuario final en AuthContext:', newUser);
+        setUser(newUser);
+        setIsEmailVerified(newUser.emailVerified ?? false);
       } catch (error) {
-        console.error("❌ Error obteniendo datos del usuario:", error)
+        console.error('❌ Error obteniendo datos del usuario:', error);
+        setUser({ ...firebaseUser, token: await firebaseUser.getIdToken() }); // Usuario mínimo
+        setIsEmailVerified(firebaseUser.emailVerified ?? false);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    })
+    });
 
-    return () => unsubscribe()
-  }, [])
+    return () => unsubscribe();
+  }, []);
 
-  const contextValue: AuthContextType = {
-    user,
-    loading,
-    setUser,
-    isEmailVerified,
-  }
+  return (
+    <AuthContext.Provider value={{ user, loading, setUser, isEmailVerified }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
-}
-
-export const useAuth = () => useContext(AuthContext)
+export const useAuth = () => useContext(AuthContext);
