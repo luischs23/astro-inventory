@@ -1,7 +1,12 @@
 ---
 import "../styles/global.css";
-import AuthProviderWrapper from "../components/AuthProviderWrapper";
+import CompanyNavbar from "../components/CompanyNavbar.tsx";
+import CompanySidebar from "../components/CompanySidebar.tsx";
+
+// Obtener companyId desde Astro.params si está disponible
+const { companyId } = Astro.params || {};
 ---
+
 <!doctype html>
 <html lang="en">
   <head>
@@ -11,6 +16,46 @@ import AuthProviderWrapper from "../components/AuthProviderWrapper";
     <title>Astro Inventory</title>
   </head>
   <body>
+    <!-- Renderizar CompanySidebar solo si hay companyId -->
+    {companyId && (
+      <CompanySidebar companyId={companyId} client:only="react" />
+    )}
+
+    <!-- Contenedor principal -->
+    <div class="main-content">
+      <!-- Renderizar CompanyNavbar solo si hay companyId -->
+      {companyId && (
+        <CompanyNavbar companyId={companyId} client:only="react" />
+      )}
+
+      <!-- Contenido de la página -->
       <slot />
+    </div>
   </body>
 </html>
+
+<style>
+  .main-content {
+    margin-left: 0; /* Sin margen por defecto en móvil o cuando no hay sidebar */
+    padding-bottom: 60px; /* Espacio para la navbar fija en móvil */
+  }
+
+  @media (min-width: 768px) {
+    .main-content {
+      margin-left: var(--sidebar-width, 0); /* Usamos una variable dinámica */
+      padding-bottom: 0; /* No necesitamos padding en escritorio */
+    }
+  }
+
+  /* Definir el ancho de la sidebar solo cuando está presente */
+  :global(:where([data-has-sidebar])) .main-content {
+    --sidebar-width: 16rem; /* 256px = w-64 en Tailwind */
+  }
+</style>
+
+<script>
+  // Agregar un atributo para indicar si la sidebar está presente
+  if (document.querySelector("aside")) {
+    document.body.setAttribute("data-has-sidebar", "");
+  }
+</script>

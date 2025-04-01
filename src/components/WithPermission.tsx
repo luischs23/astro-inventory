@@ -53,10 +53,6 @@ export function withPermission<P extends object>(
         .finally(() => setLoading(false));
     }, []);
 
-    if (loading || !isAuthorized) {
-      return <div>Cargando...</div>;
-    }
-
     return <WrappedComponent {...props} hasPermission={hasPermission} />;
   };
 }

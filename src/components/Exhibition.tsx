@@ -117,7 +117,13 @@ function InventoryExbPage({ firebaseConfig, companyId, storeId, hasPermission }:
 
   useEffect(() => {
     const fetchStoreProductsAndTemplates = async () => {
-      setLoading(true)
+      if (!companyId || !storeId) {
+        console.error('companyId or storeId is undefined');
+        setLoading(false);
+        return;
+      }
+  
+      setLoading(true);
       try {
         const storeDoc = await getDoc(doc(db, `companies/${companyId}/stores`, storeId))
         if (storeDoc.exists()) {
@@ -165,6 +171,11 @@ function InventoryExbPage({ firebaseConfig, companyId, storeId, hasPermission }:
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
+      if (!companyId || !storeId) {
+        console.error('companyId or storeId is undefined');
+        setLoading(false);
+        return;
+      }
       const matchesFilter =
         product.brand.toLowerCase().includes(filter.toLowerCase()) ||
         product.reference.toLowerCase().includes(filter.toLowerCase()) ||
@@ -220,6 +231,11 @@ function InventoryExbPage({ firebaseConfig, companyId, storeId, hasPermission }:
     const workbook = XLSX.utils.book_new()
 
     const worksheetData = sortedProducts.map((product) => {
+      if (!companyId || !storeId) {
+        console.error('companyId or storeId is undefined');
+        setLoading(false);
+        return;
+      }
       const baseData = {
         Brand: product.brand,
         Reference: product.reference,
@@ -239,7 +255,7 @@ function InventoryExbPage({ firebaseConfig, companyId, storeId, hasPermission }:
         Barcode: showUnassigned ? product.barcode || "" : product.exhibition?.[storeId]?.barcode || "",
       }
 
-      if (hasPermission("update")) {
+      if (hasPermission && hasPermission("update")) {
         return {
           ...baseData,
           "Base Price": product.baseprice,
@@ -259,7 +275,7 @@ function InventoryExbPage({ firebaseConfig, companyId, storeId, hasPermission }:
       { width: 10 },
       { width: 15 },
       { width: 20 },
-      ...(hasPermission("update") ? [{ width: 15 }, { width: 15 }] : []),
+      ...(hasPermission  && hasPermission("update") ? [{ width: 15 }, { width: 15 }] : []),
     ]
 
     XLSX.utils.book_append_sheet(workbook, worksheet, showUnassigned ? "Unassigned Products" : "Exhibition Inventory")
@@ -277,7 +293,7 @@ function InventoryExbPage({ firebaseConfig, companyId, storeId, hasPermission }:
     doc.text(showUnassigned ? "Unassigned Products Report" : "Exhibition Inventory Report", 14, 22)
 
     let startY = 30
-    if (hasPermission("update")) {
+    if (hasPermission && hasPermission("update")) {
       doc.setFontSize(12)
       doc.text(`Total Items: ${formatNumber(summaryInfo.totalItems)}`, 14, 32)
       doc.text(`Total Pares: ${formatNumber(summaryInfo.totalPares)}`, 14, 40)
@@ -287,33 +303,33 @@ function InventoryExbPage({ firebaseConfig, companyId, storeId, hasPermission }:
     }
 
     const tableColumn = ["No.", "Brand", "Reference", "Color", "Gender", "Size", "Barcode"]
-    if (hasPermission("update")) {
+    if (hasPermission && hasPermission("update")) {
       tableColumn.push("Base Price", "Sale Price")
     }
 
     const tableRows = sortedProducts.map((product, index) => {
       const baseRow = [
         (index + 1).toString(),
-        product.brand,
-        product.reference,
-        product.color,
-        product.gender,
+        product.brand || "",
+        product.reference || "",
+        product.color || "",
+        product.gender || "",
         showUnassigned
           ? Object.entries(product.sizes)
               .filter(([, sizeData]) => sizeData.quantity > 0)
               .sort(([a], [b]) => Number.parseInt(a.replace(/\D/g, "")) - Number.parseInt(b.replace(/\D/g, "")))
               .map(([size, sizeData]) => `${sizeData.quantity}-${size.replace("T-", "")}`)
               .join(", ")
-          : product.exhibition?.[storeId]?.size || "",
-        showUnassigned ? product.barcode || "" : product.exhibition?.[storeId]?.barcode || "",
-      ]
-
-      if (hasPermission("update")) {
-        baseRow.push(formatNumber(product.baseprice), formatNumber(product.saleprice))
+          : (storeId && product.exhibition?.[storeId]?.size) || "",
+        showUnassigned ? product.barcode || "" : (storeId && product.exhibition?.[storeId]?.barcode) || "",
+      ];
+  
+      if (hasPermission && hasPermission("update")) {
+        baseRow.push(formatNumber(product.baseprice) || "0", formatNumber(product.saleprice) || "0");
       }
-
-      return baseRow.map((cell) => cell.toString())
-    })
+  
+      return baseRow as string[];
+    });
 
     doc.autoTable({
       head: [tableColumn],
@@ -588,7 +604,9 @@ function InventoryExbPage({ firebaseConfig, companyId, storeId, hasPermission }:
                               })
                               .map(([size, sizeData]) => `${sizeData.quantity}-${formatSize(size)}`)
                               .join(", ")
-                          : formatSize(product.exhibition?.[storeId]?.size || "")}
+                              : storeId && product.exhibition?.[storeId]
+                              ? formatSize(product.exhibition[storeId].size)
+                              : "N/A"}
                       </div>
                       {hasPermission && hasPermission("ska") && (
                         <div className="flex items-center">
@@ -600,7 +618,7 @@ function InventoryExbPage({ firebaseConfig, companyId, storeId, hasPermission }:
                     {!showUnassigned && (
                       <div className="font-normal">
                         <span className="font-normal text-sm">
-                          Barcode: {product.exhibition?.[storeId]?.barcode}{" "}
+                        Barcode: {storeId && product.exhibition?.[storeId]?.barcode ? product.exhibition[storeId].barcode : "N/A"}{" "}
                         </span>
                       </div>
                     )}
