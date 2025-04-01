@@ -47,7 +47,6 @@ export function withPermission<P extends object>(
           }
         })
         .catch((error) => {
-          console.error('Error verificando permisos:', error);
           window.location.href = '/unauthorized';
         })
         .finally(() => setLoading(false));

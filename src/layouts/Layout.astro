@@ -15,47 +15,40 @@ const { companyId } = Astro.params || {};
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Astro Inventory</title>
   </head>
-  <body>
-    <!-- Renderizar CompanySidebar solo si hay companyId -->
-    {companyId && (
-      <CompanySidebar companyId={companyId} client:only="react" />
-    )}
-
-    <!-- Contenedor principal -->
-    <div class="main-content">
-      <!-- Renderizar CompanyNavbar solo si hay companyId -->
+  <body class="flex flex-col min-h-screen">
+    <!-- Contenedor principal con flex para sidebar y contenido -->
+    <div class="flex flex-1">
+      <!-- Sidebar: visible solo en lg -->
       {companyId && (
-        <CompanyNavbar companyId={companyId} client:only="react" />
+        <div class="hidden lg:block w-64 flex-shrink-0">
+          <CompanySidebar companyId={companyId} client:only="react" />
+        </div>
       )}
 
-      <!-- Contenido de la página -->
-      <slot />
+      <!-- Contenedor del contenido principal -->
+      <div class="flex-1 main-content">
+        <!-- Navbar: visible solo en móvil -->
+        {companyId && (
+          <div class="block md:hidden">
+            <CompanyNavbar companyId={companyId} client:only="react" />
+          </div>
+        )}
+
+        <!-- Contenido de la página -->
+        <slot />
+      </div>
     </div>
   </body>
 </html>
 
 <style>
   .main-content {
-    margin-left: 0; /* Sin margen por defecto en móvil o cuando no hay sidebar */
-    padding-bottom: 60px; /* Espacio para la navbar fija en móvil */
+    padding-bottom: 60px; /* Espacio para la navbar en móvil */
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: 1024px) { /* lg */
     .main-content {
-      margin-left: var(--sidebar-width, 0); /* Usamos una variable dinámica */
-      padding-bottom: 0; /* No necesitamos padding en escritorio */
+      padding-bottom: 0; /* Sin padding cuando no hay navbar */
     }
   }
-
-  /* Definir el ancho de la sidebar solo cuando está presente */
-  :global(:where([data-has-sidebar])) .main-content {
-    --sidebar-width: 16rem; /* 256px = w-64 en Tailwind */
-  }
 </style>
-
-<script>
-  // Agregar un atributo para indicar si la sidebar está presente
-  if (document.querySelector("aside")) {
-    document.body.setAttribute("data-has-sidebar", "");
-  }
-</script>

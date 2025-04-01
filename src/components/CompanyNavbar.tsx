@@ -1,16 +1,21 @@
+// src/components/CompanyNavbar.tsx
 "use client";
 
 import React from "react";
 import { Home, FileText, Store, Warehouse } from "lucide-react";
-import { cn } from "../lib/utils"; // Asegúrate de que esta utilidad esté disponible o usa una alternativa
-import { withPermission } from "./WithPermission";
+import { cn } from "../lib/utils";
+import { withPermission } from "../components/WithPermission";
 
-interface CompanyNavbarProps {
-  companyId?: string; // Añadimos companyId como prop explícita
-  hasPermission?: (action: string) => boolean;
+interface CompanyNavbarInnerProps {
+  companyId: string;
+  hasPermission: (action: string) => boolean;
 }
 
-function CompanyNavbar({ companyId, hasPermission }: CompanyNavbarProps) {
+interface CompanyNavbarProps {
+  companyId: string;
+}
+
+function CompanyNavbar({ companyId, hasPermission }: CompanyNavbarInnerProps) {
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
 
   const navItems = [
@@ -19,13 +24,13 @@ function CompanyNavbar({ companyId, hasPermission }: CompanyNavbarProps) {
     { name: "Warehouses", icon: Warehouse, href: `/companies/${companyId}/warehouses`, label: "Warehouses" },
   ];
 
-  if (hasPermission && ("create")) {
+  if (hasPermission("create")) {
     navItems.push({ name: "Invoices", icon: FileText, href: `/companies/${companyId}/invoices`, label: "Invoices" });
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-10 bg-white mt-10 dark:bg-gray-800 border-t shadow-lg md:top-0 md:left-0 md:h-screen md:w-16 md:border-r md:border-t-0">
-      <div className="flex justify-around md:flex-col md:justify-start md:h-full md:p-4">
+    <nav className="fixed bottom-0 left-0 right-0 z-10 bg-white dark:bg-gray-800 border-t shadow-lg">
+      <div className="flex justify-around p-2">
         {navItems.map((item) => (
           <a
             key={item.href}
@@ -40,9 +45,9 @@ function CompanyNavbar({ companyId, hasPermission }: CompanyNavbarProps) {
             <span className="sr-only">{item.label}</span>
           </a>
         ))}
-      </div> 
+      </div>
     </nav>
   );
 }
 
-export default withPermission(CompanyNavbar, ["cus"]);
+export default withPermission(CompanyNavbar, ["cus"]) as React.FC<CompanyNavbarProps>;

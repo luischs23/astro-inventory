@@ -53,7 +53,6 @@ export default function SignInForm({ firebaseConfig }: SignInFormProps) {
       }
 
       const token = await firebaseUser.getIdToken();
-      console.log('✅ Token obtenido:', token);
 
       const response = await fetch('/api/permissions', {
         method: 'POST',
@@ -67,11 +66,6 @@ export default function SignInForm({ firebaseConfig }: SignInFormProps) {
       });
 
       const responseBody = await response.text();
-      console.log('📥 Respuesta de /api/permissions:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: responseBody,
-      });
 
       if (!response.ok) {
         const errorData = JSON.parse(responseBody);
@@ -91,8 +85,6 @@ export default function SignInForm({ firebaseConfig }: SignInFormProps) {
         token,
         permissions,
       };
-
-      console.log('✅ Usuario con permisos:', extendedUser);
 
       localStorage.setItem('userToken', token);
       localStorage.setItem('userPermissions', JSON.stringify(permissions));
@@ -148,7 +140,7 @@ export default function SignInForm({ firebaseConfig }: SignInFormProps) {
 
           {error && <div className="text-sm text-red-500 text-center">{error}</div>}
           {isEmailVerified && !error && (
-            <div className="text-sm text-green-500 text-center">Email verificado</div>
+            <div className="text-sm text-green-500 text-center">Verificado</div>
           )}
 
           <button
