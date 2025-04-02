@@ -572,7 +572,7 @@ function StoreListPage({firebaseConfig, companyId, storeId, hasPermission}: Stor
                     <img
                       src={store.imageUrl || "/placeholder.svg"}
                       alt={store.name}
-                      className="absolute object-cover h-full"
+                      className="absolute object-cover w-full h-full"
                     />
                   </div>
                   <CardContent className="w-2/3 p-4 relative flex flex-col justify-start items-start gap-1">
@@ -603,7 +603,7 @@ function StoreListPage({firebaseConfig, companyId, storeId, hasPermission}: Stor
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem>
-                              <a href={`/companies/${companyId}/store/${store.id}/exhibition-inventory`}>
+                              <a href={`/companies/${companyId}/store/${store.id}/exhibition`}>
                                 Exb Inventory
                               </a>
                             </DropdownMenuItem>

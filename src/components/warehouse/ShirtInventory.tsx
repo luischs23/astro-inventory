@@ -524,6 +524,7 @@ const ShirtInventoryBase: React.FC<ShirtInventoryComponentProps> = ({ firebaseCo
   }
 
   const exportToPDF = () => {
+    const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF()
 
     // Determine if any product is a box
@@ -811,8 +812,7 @@ const ShirtInventoryBase: React.FC<ShirtInventoryComponentProps> = ({ firebaseCo
                             src={product.imageUrl || "/placeholder.svg"}
                             alt={product.reference}
                             //fill
-                            sizes="(max-width: 64px) 150vw, 64px"
-                            className="object-cover rounded-md cursor-pointer"
+                            className="absolute object-cover rounded-md w-full h-full"
                             onClick={() => handleImageClick(product.imageUrl)}
                           />
                         </AlertDialogTrigger>

@@ -15,7 +15,7 @@ import { toast } from "../../components/ui/UseToast"
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import 'jspdf-autotable';
 import { Switch } from "../../components/ui/Switch"
 import { Skeleton } from '../ui/Skeleton'
 import { InvoiceSkeleton } from '../skeletons/InvoiceSkeleton'
@@ -42,7 +42,7 @@ interface Product {
   brand: string
   reference: string
   color: string
-  gender: 'Dama' | 'Hombre'
+  gender: 'Dama' | 'Hombre' | 'Niño'
   sizes: { [key: string]: SizeInput }
   imageUrl: string
   total: number
@@ -79,7 +79,7 @@ const ParesInventoryBase: React.FC<ParesInventoryComponentProps> = ({ firebaseCo
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [genderFilter, setGenderFilter] = useState<"all" | "Dama" | "Hombre">("all")
+  const [genderFilter, setGenderFilter] = useState<"all" | "Dama" | "Hombre" | "Niño">("all")
   const [sortOrder, setSortOrder] = useState<"entry" | "alphabetical">("entry")
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
   const [warehouseName, setWarehouseName] = useState<string>("")
@@ -108,7 +108,6 @@ const ParesInventoryBase: React.FC<ParesInventoryComponentProps> = ({ firebaseCo
       const db = getFirestore(app);
       const storage = getStorage(app);
   
-
   useEffect(() => {
     const controlHeader = () => {
       if (typeof window !== "undefined") {
@@ -202,7 +201,6 @@ const ParesInventoryBase: React.FC<ParesInventoryComponentProps> = ({ firebaseCo
         } else {
           createdAtValue = Timestamp.now().toMillis()
         }
-
         return {
           id: doc.id,
           ...data,
@@ -525,8 +523,8 @@ const ParesInventoryBase: React.FC<ParesInventoryComponentProps> = ({ firebaseCo
   }
 
   const exportToPDF = () => {
+    const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF()
-
     // Determine if any product is a box
     const hasBoxItems = sortedProducts.some((product) => product.isBox)
 
@@ -739,7 +737,7 @@ const ParesInventoryBase: React.FC<ParesInventoryComponentProps> = ({ firebaseCo
                   </label>
                 </div>
               </div>
-              <Select value={genderFilter} onValueChange={(value: "all" | "Dama" | "Hombre") => setGenderFilter(value)}>
+              <Select value={genderFilter} onValueChange={(value: "all" | "Dama" | "Hombre" | "Niño") => setGenderFilter(value)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select Gender">
                     <div className="flex items-center">
@@ -752,6 +750,7 @@ const ParesInventoryBase: React.FC<ParesInventoryComponentProps> = ({ firebaseCo
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="Dama">Dama</SelectItem>
                   <SelectItem value="Hombre">Hombre</SelectItem>
+                  <SelectItem value="Niño">Niño</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortOrder} onValueChange={(value: "entry" | "alphabetical") => setSortOrder(value)}>
@@ -812,8 +811,7 @@ const ParesInventoryBase: React.FC<ParesInventoryComponentProps> = ({ firebaseCo
                             src={product.imageUrl || "/placeholder.svg"}
                             alt={product.reference}
                             //fill
-                            sizes="(max-width: 64px) 150vw, 64px"
-                            className="object-cover rounded-md cursor-pointer"
+                            className="absolute object-cover rounded-md w-full h-full"
                             onClick={() => handleImageClick(product.imageUrl)}
                           />
                         </AlertDialogTrigger>

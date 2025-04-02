@@ -287,6 +287,7 @@ function InventoryExbPage({ firebaseConfig, companyId, storeId, hasPermission }:
   }
 
   const exportToPDF = () => {
+    const { jsPDF } = (window as any).jspdf;
     const doc = new jsPDF()
 
     doc.setFontSize(18)

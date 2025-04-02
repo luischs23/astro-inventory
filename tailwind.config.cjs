@@ -5,7 +5,14 @@ module.exports = {
   ],
   darkMode: "class",
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        popover: {
+          DEFAULT: '#ffffff',
+          foreground: '#000000',
+        },
+      },
+    },
   },
   plugins: [],
 };

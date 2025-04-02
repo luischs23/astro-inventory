@@ -182,13 +182,11 @@ function CompanyManagement({ firebaseConfig, hasPermission}: CompanyManagementPr
             onClick={() => handleCardClick(company.id)}
           >
             <div className="flex">
-              <div className="w-1/3">
+              <div className="w-1/3 relative">
                 <img
                   src={company.imageUrl || '/placeholder.svg'} 
                   alt={company.name} 
-                  width={100} 
-                  height={100} 
-                  className="w-full h-full object-cover"
+                  className="absolute object-cover w-full h-full"
                 />
               </div>
               <CardContent className="w-2/3 p-4 relative">

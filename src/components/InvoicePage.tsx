@@ -461,7 +461,7 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
 
   const exportToPDF = () => {
     if (!invoice) return
-
+    const { jsPDF } = (window as any).jspdf;
     const pdf = new jsPDF()
     let yOffset = 20
 

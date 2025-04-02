@@ -8,7 +8,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-xl border bg-card text-card-foreground shadow",
+      "rounded-xl border bg-card bg-white text-card-foreground shadow",
       "flex flex-col", // Cambiamos a flex-row solo en md para imagen y contenido lado a lado
       "dark:border-gray-400 dark:bg-gray-800",
       className
@@ -24,7 +24,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-4 md:p-2", className)}
+    className={cn("flex flex-col space-y-1.5 p-4 bg-white md:p-2", className)}
     {...props}
   />
 ))
@@ -61,7 +61,7 @@ const CardContent = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "p-2 pt-0 gap-1", // Cambiamos a flex-col y alineación a la izquierda
+      "p-2 pt-0 gap-1 bg-white rounded-xl", // Cambiamos a flex-col y alineación a la izquierda
       className
     )}
     {...props}

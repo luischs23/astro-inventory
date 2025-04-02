@@ -86,7 +86,7 @@ useEffect(() => {
         fetchCompanyName()
     } else {
         setLoading(false)
-        window.location.href = '/login'
+        window.location.href = '/signin'
     }
     })
 
@@ -94,6 +94,9 @@ useEffect(() => {
 }, [companyId])
 
 const fetchCompanyName = async () => {
+    if (!companyId) {
+      throw new Error('Company ID is undefined')
+    }
     try {
     const companyRef = doc(db, 'companies', companyId)
     const companySnap = await getDoc(companyRef)

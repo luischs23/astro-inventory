@@ -1,0 +1,28 @@
+{
+  "name": "Next Inventory",
+  "short_name": "NextInv",
+  "start_url": "/login",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/logo3.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo3.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "id": "nextinventory.pwa",
+  "dir": "auto",
+  "lang": "es",
+  "orientation": "portrait",
+  "categories": [
+    "business",
+    "productivity"
+  ]
+}

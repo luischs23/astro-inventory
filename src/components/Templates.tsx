@@ -117,10 +117,10 @@ function ManageTemplates({ firebaseConfig, companyId, hasPermission }: ManageTem
             <span className="font-semibold">{template.name}</span>
             {hasPermission && hasPermission('ska') && (
             <div className="space-x-2">
-              <Button onClick={() => setEditingTemplate(template)} size="sm">Update</Button>
+              <Button onClick={() => setEditingTemplate(template)} size="sm" variant="secondary">Update</Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
+                  <Button variant="destructive" size="sm" className="bg-red-500 hover:bg-red-600 text-white">
                     Delete
                   </Button>
                 </AlertDialogTrigger>

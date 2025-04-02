@@ -16,6 +16,7 @@ import { useToast } from "../components/ui/UseToast"
 import imageCompression from 'browser-image-compression'
 import { withPermission } from "../components/WithPermission"
 import { getApp, getApps, initializeApp } from 'firebase/app'
+import { Image } from 'astro:assets';
 
 interface FirebaseConfig {
     apiKey: string;
@@ -437,9 +438,8 @@ function WarehousesPage({ firebaseConfig, companyId, warehouseId, hasPermission}
                   <div className="w-1/3 relative pb-[33.33%]">
                     <img
                       src={warehouse.imageUrl} 
-                      alt={warehouse.name} 
-                      //fill 
-                      className="absolute object-cover"
+                      alt={warehouse.name}  
+                      className="absolute object-cover w-full h-full"
                     />
                   </div>
                   <CardContent className="w-2/3 p-4 relative flex flex-col justify-start items-start gap-1">
