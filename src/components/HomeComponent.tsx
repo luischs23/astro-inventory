@@ -11,7 +11,6 @@ import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { HomeSkeleton } from './skeletons/HomeSkeleton';
 import { withPermission } from './WithPermission';
-import { ThemeToggle } from './ThemeToggle';
 import type { FirebaseApp } from 'firebase/app';
 import type { Auth, User as FirebaseUser } from 'firebase/auth';
 
@@ -217,9 +216,6 @@ function HomeComponent({ firebaseConfig, companyId, hasPermission }: HomeProps) 
               <User className="w-6 h-6 text-gray-600" />
             </div>
           )}
-          <div className="p-2 border-t lg:hidden">
-            <ThemeToggle />
-          </div>
         </div>
       </header>
 

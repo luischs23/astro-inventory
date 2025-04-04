@@ -64,9 +64,6 @@ const CompanySidebarInner: React.FC<CompanySidebarInnerProps> = ({ companyId, ha
             ))}
           </nav>
         </ScrollArea>
-        <div className="p-4 border-t">
-          <ThemeToggle />
-        </div>
       </div>
     </aside>
   );

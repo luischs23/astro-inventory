@@ -627,27 +627,6 @@ const ParesInventoryBase: React.FC<ParesInventoryComponentProps> = ({ firebaseCo
     setIsTemplateSelectOpen(true)
   }
 
-  const handleDownloadImage = async (imageUrl: string) => {
-    try {
-      const response = await fetch(imageUrl)
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = `product-image-${Date.now()}.jpg`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    } catch (error) {
-      console.error("Error downloading image:", error)
-      toast({
-        title: "Error",
-        description: "Failed to download the image. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }
-
   const handleCardClick = (productId: string) => {
     setSelectedCard(selectedCard === productId ? null : productId)
   }
@@ -825,10 +804,6 @@ const ParesInventoryBase: React.FC<ParesInventoryComponentProps> = ({ firebaseCo
                               className="object-contain"
                             />
                           </div>
-                          <Button onClick={() => handleDownloadImage(product.imageUrl)} className="mt-4">
-                            <Download className="mr-2 h-4 w-4" />
-                            Download Image
-                          </Button>
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
