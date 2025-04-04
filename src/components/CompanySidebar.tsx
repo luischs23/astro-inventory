@@ -8,7 +8,7 @@ import { ScrollArea } from "./ui/ScrollArea";
 import { Store, Warehouse, FileText, Users, User, Home, BookTemplate } from "lucide-react";
 import { withPermission } from "../components/WithPermission";
 import type { LucideIcon } from "lucide-react";
-
+ 
 interface MenuItem {
   name: string;
   icon: LucideIcon;

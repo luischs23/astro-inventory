@@ -20,13 +20,13 @@ const { companyId } = Astro.params || {};
     <div class="flex flex-1">
       <!-- Sidebar: visible solo en lg -->
       {companyId && (
-        <div class="hidden lg:block w-64 flex-shrink-0">
+        <div class="hidden lg:block fixed top-0 left-0 h-screen w-64 z-50 bg-white shadow-md">
           <CompanySidebar companyId={companyId} client:only="react" />
         </div>
       )}
 
       <!-- Contenedor del contenido principal -->
-      <div class="flex-1 main-content">
+      <div class={`flex-1 main-content ${companyId ? 'lg:ml-64' : ''}`}>
         <!-- Navbar: visible solo en móvil -->
         {companyId && (
           <div class="block md:hidden">
