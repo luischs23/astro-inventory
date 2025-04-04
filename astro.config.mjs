@@ -18,20 +18,20 @@ export default defineConfig({
         theme_color: '#ffffff',
         icons: [
           {
-            src: '/logo3.png',
+            src: '/logo_any.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: '/logo3.png',
+            src: '/logo_any.png',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: '/logo3.png',
+            src: '/logo_maskable.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'maskable'
           }
         ]
       }
