@@ -6,7 +6,7 @@ import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import type { FormEvent } from 'react';
 import type { Auth, User as FirebaseUser } from 'firebase/auth';
 
-interface FirebaseConfig {
+interface FirebaseConfig { 
   apiKey: string;
   authDomain: string;
   projectId: string;
