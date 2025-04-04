@@ -1,6 +1,7 @@
 {
   "name": "Astro Inventory",
-  "short_name": "NextInv",
+  "short_name": "Inventory",
+  "description": "Gestor de inventario con Astro",
   "start_url": "/login",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -26,6 +27,7 @@
   "id": "/",
   "dir": "auto",
   "lang": "es",
+  "scope": "/",
   "orientation": "portrait",
   "categories": [
     "business",
