@@ -1,8 +1,8 @@
 // src/components/SignInForm.tsx
 import { useState } from 'react';
 import { initializeApp } from 'firebase/app';
-import type { FirebaseApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import type { FirebaseApp } from 'firebase/app';
 import type { FormEvent } from 'react';
 import type { Auth, User as FirebaseUser } from 'firebase/auth';
 
@@ -18,6 +18,8 @@ interface FirebaseConfig {
 interface ExtendedUser extends FirebaseUser {
   token: string;
   permissions?: string[];
+  companyId?: string;
+  isDeveloper?: boolean;
 }
 
 interface SignInFormProps {
@@ -54,6 +56,7 @@ export default function SignInForm({ firebaseConfig }: SignInFormProps) {
 
       const token = await firebaseUser.getIdToken();
 
+      // Llamada al endpoint de permisos
       const response = await fetch('/api/permissions', {
         method: 'POST',
         headers: {
@@ -61,7 +64,7 @@ export default function SignInForm({ firebaseConfig }: SignInFormProps) {
         },
         body: JSON.stringify({
           token,
-          permissions: ['read'],
+          permissions: ['read'], // Permisos requeridos
         }),
       });
 
@@ -72,7 +75,7 @@ export default function SignInForm({ firebaseConfig }: SignInFormProps) {
         throw new Error(errorData.error || 'Error al verificar permisos');
       }
 
-      const { authorized, permissions } = JSON.parse(responseBody);
+      const { authorized, permissions, role, companyId } = JSON.parse(responseBody);
 
       if (!authorized) {
         setError('No tienes permiso para acceder a esta aplicación.');
@@ -80,16 +83,34 @@ export default function SignInForm({ firebaseConfig }: SignInFormProps) {
         return;
       }
 
+      // Determinar si el usuario es developer basado en el rol
+      const isDeveloper = role === 'developer';
+
+      // Validar companyId solo para no developers
+      if (!isDeveloper && !companyId) {
+        throw new Error('Usuario no asociado a ninguna compañía');
+      }
+
       const extendedUser: ExtendedUser = {
         ...firebaseUser,
         token,
         permissions,
-      };
+        isDeveloper,
+        companyId, // Puede ser undefined para developers
+      }; 
 
       localStorage.setItem('userToken', token);
       localStorage.setItem('userPermissions', JSON.stringify(permissions));
+      localStorage.setItem('isDeveloper', JSON.stringify(isDeveloper));
+      if (companyId) localStorage.setItem('companyId', companyId);
 
-      window.location.href = '/companies';
+      // Lógica de redirección
+      if (isDeveloper) {
+        window.location.href = '/companies'; // Developers van a /companies
+      } else {
+        window.location.href = `/companies/${companyId}/home`; // No developers van a su companyId/home
+      }
+
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

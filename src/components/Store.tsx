@@ -264,13 +264,22 @@ function StoreListPage({firebaseConfig, companyId, storeId, hasPermission}: Stor
           maxSizeMB: 1,
           maxWidthOrHeight: 1920,
           useWebWorker: true,
+          fileType: "image/webp", // Optimizar a WebP
         }
         const compressedFile = await imageCompression(file, options)
         setImageFile(compressedFile)
-
-        // Create a preview URL for the compressed image
         const previewUrl = URL.createObjectURL(compressedFile)
         setImagePreview(previewUrl)
+
+        // Precarga manual
+        const link = document.createElement("link");
+        link.rel = "preload";
+        link.as = "image";
+        link.href = previewUrl;
+        document.head.appendChild(link);
+
+        // Limpieza al desmontar
+        return () => document.head.removeChild(link);
       } catch (error) {
         console.error("Error compressing image:", error)
         toast({
@@ -732,13 +741,15 @@ function StoreListPage({firebaseConfig, companyId, storeId, hasPermission}: Stor
                       required={!editingStore}
                     />
                     {imagePreview && (
-                      <div className="mt-2">
+                      <div className="mt-2 relative">
+                        <div className="absolute inset-0 bg-gray-200 rounded-md animate-pulse" />
                         <img
                           src={imagePreview || "/placeholder.svg"}
                           alt="Store preview"
                           width={100}
                           height={100}
-                          className="rounded-md"
+                          className="rounded-md relative z-10"
+                          loading="eager"
                         />
                       </div>
                     )}

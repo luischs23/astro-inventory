@@ -192,7 +192,7 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
 
   const handleReturn = async () => {
     if (!invoice) return
-
+  
     const itemToReturn = invoice.items.find((item) => item.barcode === returnBarcode)
     if (!itemToReturn) {
       toast({
@@ -202,7 +202,7 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
       })
       return
     }
-
+  
     if (!itemToReturn.productId || !itemToReturn.warehouseId) {
       toast({
         title: "Error",
@@ -211,34 +211,40 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
       })
       return
     }
+  
     if (!companyId || !storeId || !invoiceId) {
-        console.error('companyId or storeId is undefined');
-        setLoading(false);
-        return;
-      }    
+      console.error('companyId or storeId is undefined')
+      setLoading(false)
+      return
+    }
+  
     try {
+      // Check if the item is a shirt
+      const shirtRef = doc(db, `companies/${companyId}/warehouses/${itemToReturn.warehouseId}/shirts`, itemToReturn.productId)
+      const shirtDoc = await getDoc(shirtRef)
+      const isShirt = shirtDoc.exists()
+  
       // Update the invoice
       const updatedItems = invoice.items.map((item) =>
         item.barcode === returnBarcode ? { ...item, returned: true } : item,
       )
       const updatedTotalSold = invoice.totalSold - itemToReturn.salePrice
       const updatedTotalEarn = invoice.totalEarn - (itemToReturn.salePrice - itemToReturn.baseprice)
-
-      // Update the invoice in Firestore
-      const invoiceRef = doc(db, `companies/${companyId}/stores/${storeId}/invoices`,invoiceId)
+  
+      const invoiceRef = doc(db, `companies/${companyId}/stores/${storeId}/invoices`, invoiceId)
       await updateDoc(invoiceRef, {
         items: updatedItems,
         totalSold: updatedTotalSold,
         totalEarn: updatedTotalEarn,
       })
-
-      // Return the item to the product inventory
-      const productRef = doc(
-        db,
-        `companies/${companyId}/warehouses/${itemToReturn.warehouseId}/products`,
-        itemToReturn.productId,
-      )
+  
+      // Return the item to the appropriate inventory
+      const collectionPath = isShirt
+        ? `companies/${companyId}/warehouses/${itemToReturn.warehouseId}/shirts`
+        : `companies/${companyId}/warehouses/${itemToReturn.warehouseId}/products`
+      const productRef = doc(db, collectionPath, itemToReturn.productId)
       const productDoc = await getDoc(productRef)
+  
       if (productDoc.exists()) {
         const productData = productDoc.data()
         const updatedSizes = { ...productData.sizes }
@@ -247,20 +253,20 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
         }
         updatedSizes[itemToReturn.size].barcodes.push(itemToReturn.barcode)
         updatedSizes[itemToReturn.size].quantity = (updatedSizes[itemToReturn.size].quantity || 0) + 1
-
+  
         await updateDoc(productRef, {
           sizes: updatedSizes,
           total: increment(1),
         })
-
-        // If the item was from an exhibition store, update the exhibition data
-        if (itemToReturn.exhibitionStore) {
+  
+        // If the item was from an exhibition store (only for products)
+        if (!isShirt && itemToReturn.exhibitionStore) {
           const exhibitionUpdate = {
             [`exhibition.${itemToReturn.exhibitionStore}`]: arrayUnion(itemToReturn.barcode),
           }
           await updateDoc(productRef, exhibitionUpdate)
         }
-
+  
         toast({
           title: "Success",
           description: "Item returned successfully",
@@ -272,15 +278,35 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
           },
         })
       } else {
-        console.error(`Product with ID ${itemToReturn.productId} not found in warehouse ${itemToReturn.warehouseId}`)
+        // If the product doesn't exist, create it
+        const newProductData: Partial<ProductData> = {
+          brand: itemToReturn.brand,
+          reference: itemToReturn.reference,
+          color: itemToReturn.color,
+          sizes: {
+            [itemToReturn.size]: {
+              barcodes: [itemToReturn.barcode],
+              quantity: 1,
+            },
+          },
+          saleprice: itemToReturn.salePrice,
+          baseprice: itemToReturn.baseprice,
+          imageUrl: itemToReturn.imageUrl,
+          total: 1,
+        }
+        await updateDoc(productRef, newProductData)
         toast({
-          title: "Error",
-          description: "Product not found in the database",
-          variant: "destructive",
+          title: "Success",
+          description: "Item returned and new product created",
+          duration: 1000,
+          style: {
+            background: "#4CAF50",
+            color: "white",
+            fontWeight: "bold",
+          },
         })
       }
-
-      // Refresh the invoice data
+  
       await fetchInvoice()
       setReturnBarcode("")
     } catch (error) {
@@ -302,17 +328,17 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
       })
       return
     }
-
+  
     try {
       let foundProduct: InvoiceItem | null = null
-
+  
       // Search in all warehouses
       for (const warehouseId of Object.keys(warehouses)) {
+        // Search in products collection
         const productsRef = collection(db, `companies/${companyId}/warehouses/${warehouseId}/products`)
-        const querySnapshot = await getDocs(productsRef)
-
-        // Search in sizes
-        for (const doc of querySnapshot.docs) {
+        const productsSnapshot = await getDocs(productsRef)
+  
+        for (const doc of productsSnapshot.docs) {
           const productData = doc.data() as ProductData
           for (const [size, sizeData] of Object.entries(productData.sizes)) {
             if (Array.isArray(sizeData.barcodes) && sizeData.barcodes.includes(addBarcode)) {
@@ -339,9 +365,46 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
           }
           if (foundProduct) break
         }
+  
+        // If not found in products, search in shirts collection
+        if (!foundProduct) {
+          const shirtsRef = collection(db, `companies/${companyId}/warehouses/${warehouseId}/shirts`)
+          const shirtsSnapshot = await getDocs(shirtsRef)
+  
+          for (const doc of shirtsSnapshot.docs) {
+            const shirtData = doc.data() as ProductData
+            for (const [size, sizeData] of Object.entries(shirtData.sizes)) {
+              if (Array.isArray(sizeData.barcodes) && sizeData.barcodes.includes(addBarcode)) {
+                foundProduct = {
+                  id: doc.id,
+                  productId: doc.id,
+                  brand: shirtData.brand,
+                  reference: shirtData.reference,
+                  color: shirtData.color,
+                  size: size,
+                  barcode: addBarcode,
+                  salePrice: shirtData.saleprice,
+                  baseprice: shirtData.baseprice,
+                  sold: false,
+                  addedAt: new Date(),
+                  exhibitionStore: null,
+                  warehouseId: warehouseId,
+                  isBox: false,
+                  imageUrl: shirtData.imageUrl,
+                  quantity: 1,
+                  // Optional: add isShirt flag if you want to track it
+                  // isShirt: true
+                }
+                break
+              }
+            }
+            if (foundProduct) break
+          }
+        }
+  
         if (foundProduct) break
       }
-
+  
       if (foundProduct) {
         setSearchResult(foundProduct)
       } else {
@@ -364,7 +427,7 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
 
   const handleAddToInvoice = async () => {
     if (!invoice || !searchResult) return
-
+  
     const newItem: InvoiceItem = {
       ...searchResult,
       salePrice: Number(newSalePrice),
@@ -374,75 +437,90 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
       assignedUser: "userId", // Placeholder - needs actual user ID
       assignedUserName: "userName", // Placeholder - needs actual user name
     }
-
+  
     if (!newItem.salePrice) {
       setImageError("Please enter the price")
       return
     }
-
+  
     if (!companyId || !storeId || !invoiceId) {
-        console.error('companyId or storeId is undefined');
-        setLoading(false);
-        return;
-      }    
-
-    const updatedItems = [...invoice.items, newItem]
-    const updatedTotalSold = invoice.totalSold + Number(newSalePrice)
-    const updatedTotalEarn = invoice.totalEarn + (Number(newSalePrice) - searchResult.baseprice)
-
-    // Update the invoice in Firestore
-    const invoiceRef = doc(db, `companies/${companyId}/stores/${storeId}/invoices`,invoiceId)
-    await updateDoc(invoiceRef, {
-      items: updatedItems,
-      totalSold: updatedTotalSold,
-      totalEarn: updatedTotalEarn,
-    })
-
-    // Remove the barcode from the product's inventory
-    if (searchResult.warehouseId) {
-      const productRef = doc(
-        db,
-        `companies/${companyId}/warehouses/${searchResult.warehouseId}/products`,
-        searchResult.productId,
-      )
-      const productDoc = await getDoc(productRef)
-      if (productDoc.exists()) {
-        const productData = productDoc.data()
-        const updatedSizes = { ...productData.sizes }
-        if (updatedSizes[searchResult.size]) {
-          const barcodeIndex = updatedSizes[searchResult.size].barcodes.indexOf(searchResult.barcode)
-          if (barcodeIndex > -1) {
-            updatedSizes[searchResult.size].barcodes.splice(barcodeIndex, 1)
-            updatedSizes[searchResult.size].quantity = (updatedSizes[searchResult.size].quantity || 0) - 1
-          }
-          await updateDoc(productRef, {
-            sizes: updatedSizes,
-            total: increment(-1),
-          })
-        } else {
-          console.error(`Size ${searchResult.size} not found in product ${searchResult.productId}`)
-        }
-      } else {
-        console.error(`Product ${searchResult.productId} not found`)
-      }
+      console.error('companyId or storeId is undefined')
+      setLoading(false)
+      return
     }
-
-    // Refresh the invoice data
-    await fetchInvoice()
-    setAddBarcode("")
-    setNewSalePrice("")
-    setSearchResult(null)
-
-    toast({
-      title: "Success",
-      description: "Item added to invoice successfully",
-      duration: 1000,
-      style: {
-        background: "#4CAF50",
-        color: "white",
-        fontWeight: "bold",
-      },
-    })
+  
+    try {
+      // Check if the item is a shirt
+      const shirtRef = doc(db, `companies/${companyId}/warehouses/${searchResult.warehouseId}/shirts`, searchResult.productId)
+      const shirtDoc = await getDoc(shirtRef)
+      const isShirt = shirtDoc.exists()
+  
+      const updatedItems = [...invoice.items, newItem]
+      const updatedTotalSold = invoice.totalSold + Number(newSalePrice)
+      const updatedTotalEarn = invoice.totalEarn + (Number(newSalePrice) - searchResult.baseprice)
+  
+      const invoiceRef = doc(db, `companies/${companyId}/stores/${storeId}/invoices`, invoiceId)
+      await updateDoc(invoiceRef, {
+        items: updatedItems,
+        totalSold: updatedTotalSold,
+        totalEarn: updatedTotalEarn,
+      })
+  
+      // Remove the barcode from the appropriate inventory
+      if (searchResult.warehouseId) {
+        const collectionPath = isShirt
+          ? `companies/${companyId}/warehouses/${searchResult.warehouseId}/shirts`
+          : `companies/${companyId}/warehouses/${searchResult.warehouseId}/products`
+        const productRef = doc(db, collectionPath, searchResult.productId)
+        const productDoc = await getDoc(productRef)
+  
+        if (productDoc.exists()) {
+          const productData = productDoc.data()
+          const updatedSizes = { ...productData.sizes }
+          if (updatedSizes[searchResult.size]) {
+            const barcodeIndex = updatedSizes[searchResult.size].barcodes.indexOf(searchResult.barcode)
+            if (barcodeIndex > -1) {
+              updatedSizes[searchResult.size].barcodes.splice(barcodeIndex, 1)
+              updatedSizes[searchResult.size].quantity = (updatedSizes[searchResult.size].quantity || 0) - 1
+              if (updatedSizes[searchResult.size].quantity === 0) {
+                delete updatedSizes[searchResult.size]
+              }
+            }
+            await updateDoc(productRef, {
+              sizes: updatedSizes,
+              total: increment(-1),
+            })
+          } else {
+            console.error(`Size ${searchResult.size} not found in product ${searchResult.productId}`)
+          }
+        } else {
+          console.error(`Product ${searchResult.productId} not found`)
+        }
+      }
+  
+      await fetchInvoice()
+      setAddBarcode("")
+      setNewSalePrice("")
+      setSearchResult(null)
+  
+      toast({
+        title: "Success",
+        description: "Item added to invoice successfully",
+        duration: 1000,
+        style: {
+          background: "#4CAF50",
+          color: "white",
+          fontWeight: "bold",
+        },
+      })
+    } catch (error) {
+      console.error("Error adding item to invoice:", error)
+      toast({
+        title: "Error",
+        description: "Failed to add item to invoice. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const formatDate = (date: Timestamp | Date) => {
@@ -614,21 +692,20 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
         {searchResult && (
           <Card className="mb-4">
             <CardContent className="p-4">
-              <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center">
                 <div className="flex-1">
                   <h3 className="font-semibold">
                     {searchResult.brand} - {searchResult.reference}
                   </h3>
                   <p>Color: {searchResult.color}</p>
                   <p>Size: {searchResult.size}</p>
-                  <p>Barcode: {searchResult.barcode}</p>
+                  <p>Barcode: {searchResult.barcode}</p> 
                 </div>
-                <div className="w-24 h-24 relative shrink-0">
+                <div className="w-24 h-24 relative shrink-0 overflow-hidden rounded-md">
                   <img
                     src={searchResult.imageUrl || "/placeholder.svg"}
                     alt={`${searchResult.brand} - ${searchResult.reference}`}
-                    //fill
-                    className="object-cover rounded-md"
+                    className="absolute object-cover rounded-md w-full h-full"
                   />
                 </div>
               </div>
@@ -672,12 +749,11 @@ function InvoicePage({firebaseConfig, companyId, storeId, invoiceId, hasPermissi
                         </div>
 
                         {/* Imagen alineada a la derecha */}
-                        <div className="w-24 h-24 relative shrink-0">
-                          <img
+                        <div className="w-24 h-24 relative shrink-0 overflow-hidden rounded-md">                          <img
                             src={item.imageUrl || "/placeholder.svg"}
                             alt={`${item.brand} - ${item.reference}`}
                             //fill
-                            className="object-cover rounded-md"
+                            className="w-full h-full object-cover"
                           />
                         </div>
                       </div>

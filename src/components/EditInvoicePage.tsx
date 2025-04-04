@@ -386,17 +386,18 @@ function EditInvoicePage({ firebaseConfig, companyId, storeId, invoiceId, hasPer
 
   const handleSearch = async () => {
     if (!searchBarcode) return
-
+  
     setIsSearching(true)
     setSearchError("")
     let foundProduct: ProductWithBarcode | null = null
-
+  
     try {
       // Search in all warehouses
       for (const warehouseId of Object.keys(warehouses)) {
+        // Search in products collection
         const productsRef = collection(db, `companies/${companyId}/warehouses/${warehouseId}/products`)
         const querySnapshot = await getDocs(productsRef)
-
+  
         // Search in sizes
         for (const doc of querySnapshot.docs) {
           const productData = doc.data() as Product
@@ -414,7 +415,7 @@ function EditInvoicePage({ firebaseConfig, companyId, storeId, invoiceId, hasPer
               break
             }
           }
-          // If not found in sizes, search in exhibition
+          // Search in exhibition
           if (!foundProduct && productData.exhibition) {
             for (const [storeId, exhibitionData] of Object.entries(productData.exhibition)) {
               if (exhibitionData.barcode === searchBarcode) {
@@ -423,7 +424,7 @@ function EditInvoicePage({ firebaseConfig, companyId, storeId, invoiceId, hasPer
                   id: doc.id,
                   size: exhibitionData.size,
                   barcode: exhibitionData.barcode,
-                  quantity: 1, // Assuming exhibition items have a quantity of 1
+                  quantity: 1,
                   warehouseId,
                   exhibitionStore: storeId,
                   isBox: false,
@@ -432,33 +433,57 @@ function EditInvoicePage({ firebaseConfig, companyId, storeId, invoiceId, hasPer
               }
             }
           }
+          if (foundProduct) break
+        }
+  
+       // If not found in products, search in shirts collection
+      if (!foundProduct) {
+        const shirtsRef = collection(db, `companies/${companyId}/warehouses/${warehouseId}/shirts`)
+        const shirtsSnapshot = await getDocs(shirtsRef)
 
-          // If not found in regular inventory, search in boxes
-          if (!foundProduct) {
-            for (const warehouseId of Object.keys(warehouses)) {
-              const boxesRef = collection(db, `companies/${companyId}/warehouses/${warehouseId}/products`)
-              const boxesQuery = query(boxesRef, where("barcode", "==", searchBarcode))
-              const boxesSnapshot = await getDocs(boxesQuery)
-
-              if (!boxesSnapshot.empty) {
-                const boxDoc = boxesSnapshot.docs[0]
-                const boxData = boxDoc.data()
-                foundProduct = {
-                  ...boxData,
-                  id: boxDoc.id,
-                  barcode: boxData.barcode,
-                  warehouseId: warehouseId,
-                  total2: boxData.total2 || 0,
-                  isBox: true,
-                } as ProductWithBarcode
-                break
+        for (const doc of shirtsSnapshot.docs) {
+          const shirtData = doc.data() as Product // Asumiendo que tiene una estructura similar
+          for (const [size, sizeData] of Object.entries(shirtData.sizes)) {
+            if (sizeData.barcodes.includes(searchBarcode)) {
+              foundProduct = {
+                ...shirtData,
+                id: doc.id,
+                size,
+                barcode: searchBarcode,
+                quantity: sizeData.quantity,
+                warehouseId,
+                isBox: false,
               }
+              break
             }
           }
           if (foundProduct) break
         }
+      }
+  
+        // Search in boxes
+        if (!foundProduct) {
+          const boxesRef = collection(db, `companies/${companyId}/warehouses/${warehouseId}/products`)
+          const boxesQuery = query(boxesRef, where("barcode", "==", searchBarcode))
+          const boxesSnapshot = await getDocs(boxesQuery)
+  
+          if (!boxesSnapshot.empty) {
+            const boxDoc = boxesSnapshot.docs[0]
+            const boxData = boxDoc.data()
+            foundProduct = {
+              ...boxData,
+              id: boxDoc.id,
+              barcode: boxData.barcode,
+              warehouseId,
+              total2: boxData.total2 || 0,
+              isBox: true,
+            } as ProductWithBarcode
+          }
+        }
+        
         if (foundProduct) break
       }
+  
       if (foundProduct) {
         setSearchedProduct(foundProduct)
         setSearchError("")
@@ -496,6 +521,14 @@ function EditInvoicePage({ firebaseConfig, companyId, storeId, invoiceId, hasPer
     }
 
     try {
+      let isShirt = false;
+
+        // First check if it's a shirt by looking in shirts collection
+        const shirtRef = doc(db, `companies/${companyId}/warehouses/${product.warehouseId}/shirts`, product.id);
+        const shirtDoc = await getDoc(shirtRef);
+        if (shirtDoc.exists()) {
+          isShirt = true;
+        }
       if (product.exhibitionStore) {
         // Handle exhibition item
         const productRef = doc(
@@ -521,13 +554,13 @@ function EditInvoicePage({ firebaseConfig, companyId, storeId, invoiceId, hasPer
           console.error("Box document does not exist:", product.id)
         }
       } else {
-        // Handle regular inventory item
-        const productRef = doc(
-          db,
-          `companies/${companyId}/warehouses/${product.warehouseId}/products`,
-          product.id,
-        )
+          // Handle regular inventory item (could be product or shirt)
+          const collectionPath = isShirt 
+          ? `companies/${companyId}/warehouses/${product.warehouseId}/shirts`
+          : `companies/${companyId}/warehouses/${product.warehouseId}/products`;
+        const productRef = doc(db, collectionPath, product.id);
         const productDoc = await getDoc(productRef)
+
         if (productDoc.exists()) {
           const productData = productDoc.data() as Product
           const updatedSizes = { ...productData.sizes }
@@ -630,15 +663,20 @@ function EditInvoicePage({ firebaseConfig, companyId, storeId, invoiceId, hasPer
 
   const processReturn = async () => {
     if (!itemToReturn) return
-
+  
     try {
       // Remove the item from the invoice
       await deleteDoc(
         doc(db, `companies/${companyId}/stores/${storeId}/invoices/temp/items`, itemToReturn.invoiceId),
       )
-
+  
+      // Check if the item exists in shirts collection to determine if it's a shirt
+      const shirtRef = doc(db, `companies/${companyId}/warehouses/${itemToReturn.warehouseId}/shirts`, itemToReturn.id);
+      const shirtDoc = await getDoc(shirtRef);
+      const isShirt = shirtDoc.exists();
+  
       if (itemToReturn.exhibitionStore) {
-        // Handle returning exhibition item
+        // Handle returning exhibition item (only in products)
         const productRef = doc(
           db,
           `companies/${companyId}/warehouses/${itemToReturn.warehouseId}/products`,
@@ -654,7 +692,7 @@ function EditInvoicePage({ firebaseConfig, companyId, storeId, invoiceId, hasPer
           await updateDoc(productRef, { exhibition: updatedExhibition })
         }
       } else if (itemToReturn.isBox) {
-        // Handle returning box item
+        // Handle returning box item (only in products)
         const boxRef = doc(
           db,
           `companies/${companyId}/warehouses/${itemToReturn.warehouseId}/products`,
@@ -680,17 +718,17 @@ function EditInvoicePage({ firebaseConfig, companyId, storeId, invoiceId, hasPer
         }
         await setDoc(boxRef, boxData)
       } else {
-        // Handle returning regular inventory item
-        const productRef = doc(
-          db,
-          `companies/${companyId}/warehouses/${itemToReturn.warehouseId}/products`,
-          itemToReturn.id,
-        )
+        // Handle returning regular inventory item (could be product or shirt)
+        const collectionPath = isShirt
+          ? `companies/${companyId}/warehouses/${itemToReturn.warehouseId}/shirts`
+          : `companies/${companyId}/warehouses/${itemToReturn.warehouseId}/products`;
+        const productRef = doc(db, collectionPath, itemToReturn.id);
         const productDoc = await getDoc(productRef)
+        
         if (productDoc.exists()) {
           const productData = productDoc.data() as Product
           const updatedSizes = { ...productData.sizes }
-
+  
           if (updatedSizes[itemToReturn.size]) {
             updatedSizes[itemToReturn.size] = {
               quantity: (updatedSizes[itemToReturn.size].quantity || 0) + 1,
@@ -702,25 +740,45 @@ function EditInvoicePage({ firebaseConfig, companyId, storeId, invoiceId, hasPer
               barcodes: [itemToReturn.barcode],
             }
           }
-
+  
           const newTotal = (productData.total || 0) + 1
-
+  
           await updateDoc(productRef, {
             sizes: updatedSizes,
             total: newTotal,
           })
         } else {
-          console.error("Product not found:", itemToReturn.id)
+          // If the document doesn't exist, create it (this handles cases where the item was deleted)
+          const newProductData: Partial<Product> = {
+            id: itemToReturn.id,
+            brand: itemToReturn.brand,
+            reference: itemToReturn.reference,
+            color: itemToReturn.color,
+            sizes: {
+              [itemToReturn.size]: {
+                quantity: 1,
+                barcodes: [itemToReturn.barcode],
+              },
+            },
+            total: 1,
+            imageUrl: itemToReturn.imageUrl,
+            saleprice: itemToReturn.saleprice,
+            baseprice: itemToReturn.baseprice,
+            comments: itemToReturn.comments,
+            gender: itemToReturn.gender,
+            createdAt: itemToReturn.createdAt || serverTimestamp(),
+            barcode: itemToReturn.barcode,
+          }
+          await setDoc(productRef, newProductData)
         }
       }
-
-      // Update the local state
+  
       setInvoice((prevInvoice) => prevInvoice.filter((i) => i.invoiceId !== itemToReturn.invoiceId))
-
+  
       if (itemToReturn.sold) {
         setTotalSold((prevTotal) => prevTotal - Number(itemToReturn.salePrice))
       }
-
+  
       toast({
         title: "Product Returned",
         description: itemToReturn.exhibitionStore

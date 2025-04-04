@@ -336,4 +336,4 @@ function CompanyManagement({ firebaseConfig, hasPermission}: CompanyManagementPr
   )
 }
 
-export default withPermission(CompanyManagement, ['read']);
+export default withPermission(CompanyManagement, ['companies']);

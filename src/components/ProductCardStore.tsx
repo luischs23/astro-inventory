@@ -32,7 +32,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   }
 
   const formattedDate = formatDate(product.addedAt)
-
+ 
   return (
     <Card className="w-full">
       <CardContent className="p-2 flex items-center justify-between w-full">
@@ -43,12 +43,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <p>Barcode: {product.barcode}</p>
           {formattedDate && <p className='text-sm text-gray-500 dark:text-gray-300'>Added: {formattedDate}</p>}
         </div>
-        <div className="w-24 h-24 relative shrink-0 ml-auto">
+        <div className="w-24 h-24 relative shrink-0 ml-auto overflow-hidden">
           <img
             src={product.imageUrl}
             alt={`${product.brand} ${product.reference}`}
-            //fill
-            className="object-cover rounded-md"
+            className="w-full h-full object-cover rounded-md"
           />
         </div>
       </CardContent>
